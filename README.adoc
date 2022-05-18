@@ -1,0 +1,30 @@
+= Home/Time
+
+Home/Time is a project for timebooking, timesheets and holiday tracking from https://juxt.pro[JUXT].
+
+== Usage
+
+_Currently only REPL usage is supported_
+
+=== Holidays
+
+The `calendar` function will return a collection of records for every date from the first date the employee was active to the ceiling year or the last date the employee was active, whichever comes first.
+
+==== Balance
+
+- Balance is accrued throughout the year and resets on January 1st.
+- A maximum of 5 holiday days can be carried over to the new year.
+- Part time holidays are accrued pro-rata.
+- When a staff member is no longer active, accrued holiday will be preserved but no more holiday entitlement will be accrued.
+- Balance can be in positive or negative.
+- Holiday is accrued daily, but can be used for fractions of a day.
+
+==== Deductions
+
+- Deductions will not be taken on weekends when holiday overlaps weekends.
+- Public holidays will always take precedence over personal holidays so holiday days will not be subtracted for holidays that overlap public holidays.
+- Public holidays depend on the `public-holiday-region` of the staff member on the given date.
+
+==== Working Pattern
+
+- Holiday accrual will be based on the number of hours in the staff member's normal working pattern.
