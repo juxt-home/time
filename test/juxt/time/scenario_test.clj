@@ -3,7 +3,7 @@
 (ns juxt.time.scenario-test
   (:require  [clojure.test :refer [deftest testing is]]
              [tick.core :as t]
-             [juxt.time.core :as sut]))
+             [juxt.time.holiday-calculator.core :as sut]))
 
 (def FULL_TIME
   {"MONDAY"
