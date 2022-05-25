@@ -14,3 +14,15 @@
 (defn filters
   [config]
   (get-in config [:holiday-entitlement :filters]))
+
+(defn ceiling-year
+  [config]
+  (get-in config [:holiday-entitlement :ceiling-year]))
+
+(defn status-for-day
+  [config]
+  (get-in config [:holiday-entitlement :status-for-day]))
+
+(defn outputs
+  [config]
+  (get-in config [:holiday-entitlement :output]))

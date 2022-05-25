@@ -135,6 +135,11 @@
 (defn read-data
   [file-path options]
   (with-open [reader (io/reader file-path)]
-  (->> (read-csv-lines reader options)
-       (map parse-fields)
-       vec)))
+    (->> (read-csv-lines reader options)
+         (map parse-fields)
+         vec)))
+
+(defn write-data
+  [file-path options data]
+  (with-open [writer (io/writer file-path)]
+    (apply csv/write-csv (conj (mapcat identity options) data writer))))

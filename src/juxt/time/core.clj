@@ -61,27 +61,66 @@
     :csv (csv-adapter/read-data (:file-path data-source) (get data-source :options {}))
     (throw (ex-info "Unexpected input source form." {:data-source data-source :form (:form data-source)}))))
 
+(defn filter-selected-data
+  [output-form results]
+  (let [selectors (:field-selectors output-form)]
+    (->> results
+         (map (fn [res] (map (fn [sel] (get-in res sel)) selectors))))))
+
+(defn write-std-out
+  [output-form results]
+  (doall (map println (filter-selected-data output-form results)))
+  results)
+
+(defn write-csv-out
+ [{:keys [file-path options] :as output-form} results]
+  (csv-adapter/write-data file-path (or options {}) (filter-selected-data output-form results)))
+
+(defn write-output
+  [output-form results]
+  (case (:form output-form)
+    :stdout (write-std-out output-form results)
+    :csv (write-csv-out output-form results)
+    (throw (ex-info "Unexpected output form." {:output-form output-form :form (:form output-form)}))))
+
+(defn generate-output
+  [config results]
+  (let [outputs (config/outputs config)]
+    (doall (map #(write-output % results) outputs))))
+
+(defn load-inputs
+  [config]
+  (let [input-sources (config/input-sources config)]
+    (->> input-sources
+         (map load-data-from-source)
+         (reduce concat))))
+
+(defn juxtcode-history-map->holiday-calendar
+  [config m]
+  (let [ceiling-year (config/ceiling-year config)
+        juxtcode-record-collection-map (update-vals m holiday/history->staff-member-record-collection)]
+    (map #(holiday/calendar {:staff-member-record-collection (second %)
+                             :public-holidays []
+                             :personal-holidays []
+                             :ceiling-year (t/year ceiling-year)}) juxtcode-record-collection-map)))
+
 (defn holidays-get-status
   [options]
-  (let [config (config/config (:config-path options) (:profile options))
-        input-sources (config/input-sources config)]
-    (->>(map load-data-from-source input-sources)
-        (reduce concat)
-        (group-by :juxtcode)
-        (#(update-vals % holiday/history->staff-member-record-collection))
-        (take 2)
-        (map #(holiday/calendar {:staff-member-record-collection (second %)
-                                 :public-holidays []
-                                 :personal-holidays []
-                                 :ceiling-year (t/year "2022")}))
-        (map (partial holiday/get-record-for-date (t/date "2022-03-01"))))))
+  (let [config (merge (config/config (:config-path options) (:profile options)) options)
+        ceiling-year (config/ceiling-year config)
+        status-for-day (config/status-for-day config)]
+    (->> (load-inputs config)
+         (group-by :juxtcode)
+         (juxtcode-history-map->holiday-calendar config)
+         (map (partial holiday/get-record-for-date (t/date status-for-day)))
+         (generate-output config))))
 
 (defn -main [& args]
   (let [{:keys [action action-args options exit-message exit-code]} (validate-args args)]
     (when exit-message
       (println exit-message)
       (System/exit exit-code))
-    (println (holidays-get-status options))))
+    (holidays-get-status options)))
 
 
 (comment
