@@ -26,3 +26,7 @@
 (defn outputs
   [config]
   (get-in config [:holiday-entitlement :output]))
+
+(defn input-public-holiday-sources
+  [config]
+  (get-in config [:holiday-entitlement :input-public-holiday-sources]))

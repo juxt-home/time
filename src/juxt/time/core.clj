@@ -5,6 +5,7 @@
             [clojure.tools.cli :as cli]
             [clojure.string :as str]
             [juxt.time.adapters.csv-adapter :as csv-adapter]
+            [juxt.time.adapters.ics-adapter :as ics-adapter]
             [juxt.time.holiday-calculator.core :as holiday]
             [tick.core :as t]))
 
@@ -88,6 +89,23 @@
   (let [outputs (config/outputs config)]
     (doall (map #(write-output % results) outputs))))
 
+(defn load-public-holiday-data-from-source
+  [data-source]
+  (let [region (:region data-source)
+        form (:form data-source)]
+    (case form
+      :ics (map
+            #(assoc % :region region)
+            (ics-adapter/read-data (:file-path data-source) (get data-source :options {})))
+      (throw (ex-info "Unexpected input source form." {:data-source data-source :form form})))))
+
+(defn load-public-holiday-inputs
+  [config]
+  (let [input-sources (config/input-public-holiday-sources config)]
+    (->> input-sources
+         (map load-public-holiday-data-from-source)
+         (reduce concat))))
+
 (defn load-inputs
   [config]
   (let [input-sources (config/input-sources config)]
@@ -96,11 +114,11 @@
          (reduce concat))))
 
 (defn juxtcode-history-map->holiday-calendar
-  [config m]
+  [config public-holidays m]
   (let [ceiling-year (config/ceiling-year config)
         juxtcode-record-collection-map (update-vals m holiday/history->staff-member-record-collection)]
     (map #(holiday/calendar {:staff-member-record-collection (second %)
-                             :public-holidays []
+                             :public-holidays public-holidays
                              :personal-holidays []
                              :ceiling-year (t/year ceiling-year)}) juxtcode-record-collection-map)))
 
@@ -108,10 +126,11 @@
   [options]
   (let [config (merge (config/config (:config-path options) (:profile options)) options)
         ceiling-year (config/ceiling-year config)
-        status-for-day (config/status-for-day config)]
+        status-for-day (config/status-for-day config)
+        public-holidays (load-public-holiday-inputs config)]
     (->> (load-inputs config)
          (group-by :juxtcode)
-         (juxtcode-history-map->holiday-calendar config)
+         (juxtcode-history-map->holiday-calendar config public-holidays)
          (map (partial holiday/get-record-for-date (t/date status-for-day)))
          (generate-output config))))
 
