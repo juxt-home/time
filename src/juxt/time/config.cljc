@@ -30,3 +30,7 @@
 (defn input-public-holiday-sources
   [config]
   (get-in config [:holiday-entitlement :input-public-holiday-sources]))
+
+(defn input-personal-holiday-sources
+  [config]
+  (get-in config [:holiday-entitlement :input-personal-holiday-sources]))

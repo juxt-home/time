@@ -109,35 +109,20 @@
 
 (defn parse-fields
   [loaded-entry]
-  (-> loaded-entry
-      (assoc :juxt.home/public-holiday-region (:holiday-region loaded-entry))
-      (assoc :juxt.home/status (get loaded-entry :status "ACTIVE"))
-      (assoc :juxt.home/working-pattern (get loaded-entry :working-pattern default-working-pattern-str))
-      (assoc :juxt.home/juxtcode (:juxtcode loaded-entry))
-      (assoc :holidays/employment-change-date (:employment-change-date loaded-entry))
-      (assoc :juxt.home/holiday-entitlement (:holiday-entitlement loaded-entry))
-      (assoc :juxt.home/employment-type (get loaded-entry :employment-type "EMPLOYEE"))
-      (assoc :juxt.home/full-time-hours (get loaded-entry :full-time-hours 40))
-
-      (update
-       :juxt.home/working-pattern
-       generate-working-pattern)
-      (update
-         :juxt.home/working-pattern
-         working-pattern-str->working-pattern pattern-fns)
-      (update
-       :juxt.home/holiday-entitlement
-       parse-double)
-      (update
-       :holidays/employment-change-date
-       #(.parse (java.text.SimpleDateFormat. "dd/MM/yyyy") %))))
+  {:juxt.home/public-holiday-region (:holiday-region loaded-entry)
+   :juxt.home/status (get loaded-entry :status "ACTIVE")
+   :juxt.home/working-pattern (working-pattern-str->working-pattern (generate-working-pattern (get loaded-entry :working-pattern default-working-pattern-str)) pattern-fns)
+   :juxt.home/juxtcode (:juxtcode loaded-entry)
+   :holidays/employment-change-date (.parse (java.text.SimpleDateFormat. "dd/MM/yyyy") (:employment-change-date loaded-entry))
+   :juxt.home/holiday-entitlement (parse-double (:holiday-entitlement loaded-entry))
+   :juxt.home/employment-type (get loaded-entry :employment-type "EMPLOYEE")
+   :juxt.home/full-time-hours (parse-double (get loaded-entry :full-time-hours "40.00"))})
 
 (defn read-data
   [file-path options]
   (with-open [reader (io/reader file-path)]
     (->> (read-csv-lines reader options)
-         (map parse-fields)
-         vec)))
+         (mapv parse-fields))))
 
 (defn write-data
   [file-path options data]
