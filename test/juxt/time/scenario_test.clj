@@ -27,7 +27,7 @@
                                         ; Employee moved to DE-NW July 2019
                                         ; Employee contract terminated November 2019
 
-(def scenario-1-employment-started-event {:holidays/employment-change-date #inst "2019-04-16T00:00"
+(def scenario-1-employment-started-event {:juxt.home/employment-change-date #inst "2019-04-16T00:00"
                                           :juxt.home/juxtcode "rpl"
                                           :juxt.home/status "ACTIVE"
                                           :juxt.home/employment-type "EMPLOYEE"
@@ -38,10 +38,10 @@
 
 (def scenario-1-change-region-event (merge
                                      scenario-1-employment-started-event
-                                     {:holidays/employment-change-date #inst "2019-09-10T00:00"
+                                     {:juxt.home/employment-change-date #inst "2019-09-10T00:00"
                                       :juxt.home/public-holiday-region "DE-NW"}))
 
-(def scenario-1-employment-terminated-event {:holidays/employment-change-date #inst "2019-11-30T00:00"
+(def scenario-1-employment-terminated-event {:juxt.home/employment-change-date #inst "2019-11-30T00:00"
                                              :juxt.home/juxtcode "rpl"
                                              :juxt.home/status "TERMINATED"
                                              :juxt.home/employment-type "EMPLOYEE"})

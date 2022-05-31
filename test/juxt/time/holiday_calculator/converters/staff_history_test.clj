@@ -1,10 +1,10 @@
 ;; Copyright © 2022, JUXT LTD.
 
-(ns juxt.time.adapters.csv-adapter-test
-  (:require [juxt.time.adapters.csv-adapter :as sut]
-            [clojure.test :refer [deftest testing is]]
+(ns juxt.time.holiday-calculator.converters.staff-history-test
+  (:require [juxt.time.holiday-calculator.converters.staff-history :as sut]
             [tick.core :as t]
-            [tick.alpha.interval :as t.i]))
+            [tick.alpha.interval :as t.i]
+            [clojure.test :refer [deftest testing is]]))
 
 (defn make-working-day
   [start-time end-time]
