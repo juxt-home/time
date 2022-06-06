@@ -36,8 +36,8 @@
 
 (def basic-user-change-region-event (merge
                                      basic-user-employment-started-event
-                                     {:juxt.home/employment-change-date #inst "2019-09-10T00:00"
-                                      :juxt.home/public-holiday-region "DE-NW"}))
+                                     {:juxt.home/employment-change-date #inst "2019-08-01T00:00"
+                                      :juxt.home/public-holiday-region "GB-SCT"}))
 
 (def basic-user-employment-terminated-event {:juxt.home/employment-change-date #inst "2019-11-30T00:00"
                                              :juxt.home/juxtcode "rpl"
@@ -74,8 +74,8 @@
                    basic-user-change-region-event
                    basic-user-employment-terminated-event)
              (assoc-in [0 :juxt.home/effective-from] #inst "2019-04-01T00:00")
-             (assoc-in [0 :juxt.home/effective-to] #inst "2019-09-10T00:00")
-             (assoc-in [1 :juxt.home/effective-from] #inst "2019-09-10T00:00")
+             (assoc-in [0 :juxt.home/effective-to] #inst "2019-08-01T00:00")
+             (assoc-in [1 :juxt.home/effective-from] #inst "2019-08-01T00:00")
              (assoc-in [1 :juxt.home/effective-to] #inst "2019-11-30T00:00")
              (assoc-in [2 :juxt.home/effective-from] #inst "2019-11-30T00:00"))
          (sut/history->staff-member-record-collection (conj basic-full-time-user-history
@@ -140,6 +140,11 @@
 
     (testing "Public holidays marked in the assigned region and another are marked as public holidays"
       (is (:public-holiday (sut/get-record-for-date (t/date "2019-12-25") (sut/calendar calendar-inputs)))))
+
+    (let [record-collection (sut/history->staff-member-record-collection (conj basic-full-time-user-history basic-user-change-region-event))
+          calendar-inputs (assoc calendar-inputs :staff-member-record-collection record-collection)]
+      (testing "If the employee changes region, the new region's public holidays are taken into account"
+        (is (:public-holiday (sut/get-record-for-date (t/date "2019-08-01") (sut/calendar calendar-inputs))))))
 
     (testing "Personal holidays are marked as personal holidays"
       (is (:holidays (sut/get-record-for-date (t/date "2019-11-18") (sut/calendar calendar-inputs))))
