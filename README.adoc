@@ -4,11 +4,87 @@ Home/Time is a project for timebooking, timesheets and holiday tracking from htt
 
 == Usage
 
-_Currently only REPL usage is supported_
-
 === Holidays
 
-The `calendar` function will return a collection of records for every date from the first date the employee was active to the ceiling year or the last date the employee was active, whichever comes first.
+==== Direct Call
+
+The `juxt.time.holiday-calculator.core/calendar` function will return a collection of records for every date from the first date the employee was active to the ceiling year or the last date the employee was active, whichever comes first.
+
+```
+juxt.time.holiday-calculator.core/calendar
+([{:keys [staff-member-record-collection public-holidays personal-holidays ceiling-year]}])
+  Generates a collection of records for dates worked with holiday status for each day
+
+  Transforms staff history and holidays into collection of dates between
+  beginning of continuous service to end of service or ceiling year with
+  records of holidays assoc.
+Spec
+  args: (keys :req-un [:juxt.time.holiday-calculator.core/personal-holidays :juxt.time.holiday-calculator.core/staff-member-record-collection :juxt.time.holiday-calculator.core/ceiling-year])
+  ret: (coll-of :juxt.time.holiday-calculator.core/holiday-result :distinct true :kind vector?)
+```
+
+=== Command Line
+
+The calendar execution can return the status of all known employees for a given date with the following execution
+
+```bash
+clojure -M:holidays-get-status -c docs/example-config.edn holidays-get-status
+```
+
+`docs/example-config.edn` can be replaced with an alternative path.
+
+==== Inputs
+
+===== Staff History
+
+Can be in csv, tsv or edn with the following headings/keys
+
+[cols="2,1"]
+|===
+|holiday-region | Required (https://en.wikipedia.org/wiki/ISO_3166-2[ISO 3166-2])
+|juxtcode | Required (3-letter-code)
+|employment-change-date | Required (https://en.wikipedia.org/wiki/ISO_8601#Dates[ISO 860])
+|holiday-entitlement | Required (number)
+|full-time-hours | Required (number)
+|status | Optional (Otherwise "ACTIVE")
+|working-pattern* | Optional (Otherwise "40 hours over 5 days")
+|employment-type | Optional (Otherwise "EMPLOYEE")
+|===
+
+*Working pattern can be in one of the following formats (`X hours over 5 days`, `X hours over Y days (Z hours Mon, Tues, Wed)` or `X hours over Y days (A Mon, B Tues, C Wed)`
+
+===== Personal Holidays
+
+Can be in csv, tsv or edn with the following headings/keys
+
+[cols="2,1"]
+|===
+|user | Required (3-letter-code)
+|beginning | Required (instant)
+|end | Required (instant)
+|description | Required (string)
+|===
+
+===== Public holidays
+
+Can be provided in https://datatracker.ietf.org/doc/html/rfc5545[.ics format]
+
+==== Outputs
+
+Output can be in stdout, csv or tsv format (without headings).
+Field selectors must be provided to determine which fields to export, for example:
+```
+:field-selectors [[:period :juxt.home/juxtcode]
+                  [:balance]]
+
+```
+
+will export something similar to the following:
+
+```
+jux,3.210M
+jx2,0.123M
+```
 
 ==== Balance
 
