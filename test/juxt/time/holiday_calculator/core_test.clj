@@ -47,11 +47,13 @@
 (def basic-full-time-user-history [basic-user-employment-started-event])
 
 
-(def christmas-day-holiday {["GB-ENG" #time/date "2019-12-25"] {:date #time/date "2019-12-25" :name "Christmas Day" :region "GB-ENG"}})
-(def boxing-day-holiday {["GB-ENG" #time/date "2019-12-26"] {:date #time/date "2019-12-26" :name "Boxing Day" :region "GB-ENG"}})
+(def gb-eng-christmas-day-holiday {["GB-ENG" #time/date "2019-12-25"] {:date #time/date "2019-12-25" :name "Christmas Day" :region "GB-ENG"}})
+(def gb-eng-boxing-day-holiday {["GB-ENG" #time/date "2019-12-26"] {:date #time/date "2019-12-26" :name "Boxing Day" :region "GB-ENG"}})
+(def gb-sct-summer-holiday {["GB-SCT" #time/date "2019-08-01"] {:date #time/date "2019-08-01" :name "Summer Bank Holiday" :region "GB-SCT"}})
+(def gb-sct-christmas-day-holiday {["GB-SCT" #time/date "2019-12-25"] {:date #time/date "2019-12-25" :name "Christmas Day" :region "GB-SCT"}})
 
-(def basic-user-personal-holidays [{:juxt.home/beginning-local-date-time "2019-11-08T00:00",
-                                    :juxt.home/end-local-date-time "2019-11-09T00:00",
+(def basic-user-personal-holidays [{:juxt.home/beginning-local-date-time "2019-11-08T00:00"
+                                    :juxt.home/end-local-date-time "2019-11-09T00:00"
                                     :juxt.home/description "Wedding"}])
 
 (deftest history->staff-member-record-collection-test
@@ -80,85 +82,127 @@
                                                             basic-user-change-region-event
                                                             basic-user-employment-terminated-event)))))
 
+(deftest calendar-generates-records-for-every-date-test
+  (let [record-collection (sut/history->staff-member-record-collection basic-full-time-user-history)
+        calendar-inputs {:staff-member-record-collection record-collection
+                         :ceiling-year (t/year "2021")}
+        test-calendar (sut/calendar calendar-inputs)]
+    (testing "Records are generated for every day from start date to end of ceiling year"
+      (is (= 1006 (count test-calendar)))
+      (is (nil? (sut/get-record-for-date (t/date "2019-03-31") test-calendar)))
+      (is (= (t/date "2019-04-01") (:date (first test-calendar))))
+      (is (= (t/date "2021-12-31") (:date (last test-calendar))))
+      (is (nil? (sut/get-record-for-date (t/date "2022-01-01") test-calendar)))
 
-(deftest calendar-test
-  (let [test-calendar (sut/calendar
-                       {:staff-member-record-collection (sut/history->staff-member-record-collection basic-full-time-user-history)
-                        :public-holidays (merge christmas-day-holiday boxing-day-holiday)
-                        :personal-holidays [#:juxt.home {:beginning-local-date-time "2019-10-11T00:00"
-                                                         :end-local-date-time "2019-10-17T00:00"
-                                                         :description "Other holiday"}
-                                            #:juxt.home {:beginning-local-date-time "2019-11-18T00:00"
-                                                         :end-local-date-time "2019-11-19T00:00"
-                                                         :description "Other holiday"}
-                                            #:juxt.home {:beginning-local-date-time "2019-12-23T00:00"
-                                                         :end-local-date-time "2019-12-27T00:00"
-                                                         :description "Christmas overlay holiday"}]
-                        :ceiling-year (t/year "2021")})]
+      (let [updated-ceiling-year-test-calendar (sut/calendar (assoc calendar-inputs :ceiling-year (t/year "2020")))]
+        (is (= 641 (count updated-ceiling-year-test-calendar)))
+        (is (nil? (sut/get-record-for-date (t/date "2019-03-31") updated-ceiling-year-test-calendar)))
+        (is (= (t/date "2019-04-01") (:date (first updated-ceiling-year-test-calendar))))
+        (is (= (t/date "2020-12-31") (:date (last updated-ceiling-year-test-calendar))))
+        (is (nil? (sut/get-record-for-date (t/date "2022-01-01") updated-ceiling-year-test-calendar))))
 
-    (testing "Returns a collection of entries with one per day from employment start to ceiling year end"
-      (is (= 1006 (count test-calendar))))
+      (let [updated-staff-history (assoc-in basic-full-time-user-history [0 :juxt.home/employment-change-date] #inst "2019-03-01T00:00")
+            updated-start-date-collection (sut/history->staff-member-record-collection updated-staff-history)
+            updated-start-date-calendar (sut/calendar (assoc calendar-inputs :staff-member-record-collection updated-start-date-collection))]
+        (is (= 1037 (count updated-start-date-calendar)))
+        (is (nil? (sut/get-record-for-date (t/date "2019-02-28") updated-start-date-calendar)))
+        (is (= (t/date "2019-03-01") (:date (first updated-start-date-calendar))))
+        (is (= (t/date "2021-12-31") (:date (last updated-start-date-calendar))))
+        (is (nil? (sut/get-record-for-date (t/date "2022-01-01") updated-start-date-calendar)))))))
+
+(deftest calendar-marks-holidays-correctly-test
+  (let [record-collection (sut/history->staff-member-record-collection basic-full-time-user-history)
+        calendar-inputs {:staff-member-record-collection record-collection
+                         :public-holidays (merge gb-eng-christmas-day-holiday
+                                                 gb-eng-boxing-day-holiday
+                                                 gb-sct-summer-holiday
+                                                 gb-sct-christmas-day-holiday)
+                         :personal-holidays [#:juxt.home {:beginning-local-date-time "2019-10-11T00:00"
+                                                          :end-local-date-time "2019-10-17T00:00"
+                                                          :description "Other holiday"}
+                                             #:juxt.home {:beginning-local-date-time "2019-11-18T00:00"
+                                                          :end-local-date-time "2019-11-19T00:00"
+                                                          :description "Other holiday"}
+                                             #:juxt.home {:beginning-local-date-time "2019-12-23T00:00"
+                                                          :end-local-date-time "2019-12-27T00:00"
+                                                          :description "Christmas overlay holiday"}]
+                         :ceiling-year (t/year "2021")}]
 
     (testing "Public holidays in the assigned region are marked as public holidays"
-      (is (:public-holiday (sut/get-record-for-date (t/date "2019-12-25") test-calendar)))
-      (is (:public-holiday (sut/get-record-for-date (t/date "2019-12-26") test-calendar))))
+      (is (:public-holiday (sut/get-record-for-date (t/date "2019-12-26") (sut/calendar calendar-inputs))))
+      (let [record-collection-in-gb-sct [(assoc (first record-collection) :juxt.home/public-holiday-region "GB-SCT")]]
+        (is (:public-holiday (sut/get-record-for-date
+                              (t/date "2019-08-01")
+                              (sut/calendar (assoc calendar-inputs :staff-member-record-collection record-collection-in-gb-sct)))))))
 
-    (testing "Non-public holidays in the assigned region are not marked as public holidays"
-      (is (nil? (:public-holiday (sut/get-record-for-date (t/date "2019-12-23") test-calendar))))
-      (is (nil? (:public-holiday (sut/get-record-for-date (t/date "2019-12-24") test-calendar)))))
+    (testing "Public holidays not from assigned region are not marked as public holidays"
+      (is (nil? (:public-holiday (sut/get-record-for-date (t/date "2019-08-01") (sut/calendar calendar-inputs))))))
+
+    (testing "Public holidays marked in the assigned region and another are marked as public holidays"
+      (is (:public-holiday (sut/get-record-for-date (t/date "2019-12-25") (sut/calendar calendar-inputs)))))
 
     (testing "Personal holidays are marked as personal holidays"
-      (is (:holidays (sut/get-record-for-date (t/date "2019-11-18") test-calendar)))
-      (is (:holidays (sut/get-record-for-date (t/date "2019-12-23") test-calendar)))
-      (is (:holidays (sut/get-record-for-date (t/date "2019-12-24") test-calendar))))
+      (is (:holidays (sut/get-record-for-date (t/date "2019-11-18") (sut/calendar calendar-inputs))))
+      (is (:holidays (sut/get-record-for-date (t/date "2019-12-23") (sut/calendar calendar-inputs))))
+      (is (:holidays (sut/get-record-for-date (t/date "2019-12-24") (sut/calendar calendar-inputs)))))
 
     (testing "Personal holiday over public holiday is marked only as public holiday"
-      (is (nil? (:holidays (sut/get-record-for-date (t/date "2019-12-25") test-calendar))))
-      (is (:public-holiday (sut/get-record-for-date (t/date "2019-12-25") test-calendar))))
+      (is (nil? (:holidays (sut/get-record-for-date (t/date "2019-12-25") (sut/calendar calendar-inputs)))))
+      (is (:public-holiday (sut/get-record-for-date (t/date "2019-12-25") (sut/calendar calendar-inputs)))))
 
     (testing "Holiday over non-working day (based on working pattern) are not marked as holidays"
-      (is (nil? (:holidays (sut/get-record-for-date (t/date "2019-10-12") test-calendar))))
-      (is (nil? (:holidays (sut/get-record-for-date (t/date "2019-10-13") test-calendar)))))
+      (is (nil? (:holidays (sut/get-record-for-date (t/date "2019-10-12") (sut/calendar calendar-inputs)))))
+      (is (nil? (:holidays (sut/get-record-for-date (t/date "2019-10-13") (sut/calendar calendar-inputs))))))
 
-    (testing "When user has over 12 months continuous service, Jan 1st, balance is equal to entitlement (plus carry)"
-      (is (= 5 (int (:balance (sut/get-record-for-date (t/date "2021-01-01") test-calendar)))))))
+    (testing "Days that are not holidays are not marked as public or personal holidays"
+      (let [test-date (sut/get-record-for-date (t/date "2019-06-03") (sut/calendar calendar-inputs))]
+        (is (nil? (:holidays test-date)))
+        (is (nil? (:public-holiday (:holidays test-date))))))))
 
-  (let [user-history (assoc-in basic-full-time-user-history [0 :juxt.home/employment-change-date] #inst "2022-01-01")
-        jan-1-new-user-calendar (sut/calendar
-                                 {:staff-member-record-collection (sut/history->staff-member-record-collection user-history)
-                                  :public-holidays []
-                                  :personal-holidays []
-                                  :ceiling-year (t/year "2022")})]
-    (testing "When user has 0 days of continuous service, balance is zero"
-      (is (zero? (int (:balance (sut/get-record-for-date (t/date "2022-01-01") jan-1-new-user-calendar))))))
+(deftest calendar-calculates-balance-test
+  (let [calendar-inputs {:staff-member-record-collection (sut/history->staff-member-record-collection basic-full-time-user-history)
+                         :ceiling-year (t/year "2021")}
+        test-calendar (sut/calendar calendar-inputs)
+        dayc-15-holidays {:juxt.home/beginning-local-date-time "2019-11-01T00:00"
+                     :juxt.home/end-local-date-time "2019-11-22T00:00"
+                     :description "15 days holiday taken (skipping-weekends)"}
+        dayc-18-holidays {:juxt.home/beginning-local-date-time "2019-11-01T00:00"
+                     :juxt.home/end-local-date-time "2019-11-27T00:00"
+                     :description "18 days holiday taken (skipping weekends"}
+        test-calendar-with-15-holidays-taken (sut/calendar (assoc calendar-inputs :personal-holidays [dayc-15-holidays]))
+        test-calendar-with-18-holidays-taken (sut/calendar (assoc calendar-inputs :personal-holidays [dayc-18-holidays]))]
 
-    (testing "After a fraction of a year, balance is the same fraction of entitlement"
-      (is (= 1 (int (:balance (sut/get-record-for-date (t/date "2022-01-15") jan-1-new-user-calendar)))))
-      (is (= 2 (int (:balance (sut/get-record-for-date (t/date "2022-02-01") jan-1-new-user-calendar)))))
-      (is (= 5 (int (:balance (sut/get-record-for-date (t/date "2022-03-15") jan-1-new-user-calendar)))))
-      (is (= 12 (int (:balance (sut/get-record-for-date (t/date "2022-07-01") jan-1-new-user-calendar))))))
+    (testing "On the staff-member's first day, balance is 0"
+      (is (zero? (int (:balance (sut/get-record-for-date (t/date "2019-04-01") test-calendar))))))
 
-    (testing "After year complete, balance is equal to entitlement"
-      (is (= 25 (int (:balance (sut/get-record-for-date (t/date "2022-12-31") jan-1-new-user-calendar)))))))
+    (testing "Holiday balance accrues throughout the year to (/ entitlement fraction-worked)"
+      (is (= 1 (int (:balance (sut/get-record-for-date (t/date "2019-04-15") test-calendar)))))
+      (is (= 9 (int (:balance (sut/get-record-for-date (t/date "2019-08-15") test-calendar)))))
+      (is (= 18 (int (:balance (sut/get-record-for-date (t/date "2019-12-31") test-calendar))))))
 
-  (let [user-history (assoc-in basic-full-time-user-history [0 :juxt.home/employment-change-date] #inst "2022-06-15")
-        jun-15-new-user-calendar (sut/calendar
-                                  {:staff-member-record-collection (sut/history->staff-member-record-collection user-history)
-                                   :public-holidays []
-                                   :personal-holidays []
-                                   :ceiling-year (t/year "2023")})]
+    (testing "Holiday balance is reduced by holidays-taken"
+      (is (= 3 (int (:balance (sut/get-record-for-date (t/date "2019-12-31") test-calendar-with-15-holidays-taken)))))
+      (is (= 0 (int (:balance (sut/get-record-for-date (t/date "2019-12-31") test-calendar-with-18-holidays-taken))))))
 
-    (testing "When user has 0 days of continuous service, balance is zero"
-      (is (zero? (int (:balance (sut/get-record-for-date (t/date "2022-06-15") jun-15-new-user-calendar))))))
+    (testing "Holiday balance can go negative"
+      (is (= -1 (int (:balance (sut/get-record-for-date (t/date "2019-11-27") test-calendar-with-18-holidays-taken))))))
 
-    (testing "No records are produced for dates before start date"
-      (is (nil? (sut/get-record-for-date (t/date "2022-06-14") jun-15-new-user-calendar))))
+    (testing "Jan 1st, balance is equal to 0 + carryover"
+      (is (= 5 (int (:balance (sut/get-record-for-date (t/date "2020-01-01") test-calendar)))))
+      (is (= 3 (int (:balance (sut/get-record-for-date (t/date "2020-01-01") test-calendar-with-15-holidays-taken)))))
+      (is (= 0 (int (:balance (sut/get-record-for-date (t/date "2020-01-01") test-calendar-with-18-holidays-taken))))))
 
-    (testing "After a fraction of a year, balance is the same fraction of entitlement"
-      (is (= 1 (int (:balance (sut/get-record-for-date (t/date "2022-06-30") jun-15-new-user-calendar)))))
-      (is (= 2 (int (:balance (sut/get-record-for-date (t/date "2022-07-15") jun-15-new-user-calendar)))))
-      (is (= 5 (int (:balance (sut/get-record-for-date (t/date "2022-09-01") jun-15-new-user-calendar)))))
-      (is (= 12 (int (:balance (sut/get-record-for-date (t/date "2022-12-15") jun-15-new-user-calendar))))))
+    (testing "By the end of the second year employment, balance should equal (+ entitlement carry)"
+      (is (= 30 (int (:balance (sut/get-record-for-date (t/date "2020-12-31") test-calendar)))))
+      (is (= 28 (int (:balance (sut/get-record-for-date (t/date "2020-12-31") test-calendar-with-15-holidays-taken)))))
+      (is (= 25 (int (:balance (sut/get-record-for-date (t/date "2020-12-31") test-calendar-with-18-holidays-taken))))))))
 
-    (testing "When user less than 12 months continuous service, Jan 1st, balance is equal to entitlement (plus carry)"
-      (is (= 5 (int (:balance (sut/get-record-for-date (t/date "2023-01-01") jun-15-new-user-calendar))))))))
+(comment
+
+  (defn get-start-and-end-date-for-working-day-holiday-count
+    [start-date holiday-count]
+    (->> (t/range start-date (t/>> start-date (t/new-period (* 2 holiday-count) :days)))
+         (remove #(#{(t/day-of-week "SATURDAY") (t/day-of-week "SUNDAY")} (t/day-of-week %)))
+         (take holiday-count)
+         ((juxt first last))))
+  )
