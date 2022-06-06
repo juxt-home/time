@@ -1,0 +1,40 @@
+{
+ :holiday-entitlement {:input-sources [{:form :csv
+                                        :file-path "/var/tmp/holiday-entitlement.csv"}
+
+                                       {:form :csv
+                                        :file-path "/var/tmp/new-starters-holiday-entitlement.csv"}]
+
+                       :input-public-holiday-sources [{:form :ics
+                                                       :file-path "/var/tmp/england-and-wales.ics"
+                                                       :region "GB-ENG"}
+                                                      {:form :ics
+                                                       :file-path "/var/tmp/germany.ics"
+                                                       :region "DE-NW"}]
+
+                       :input-personal-holiday-sources [{:form :edn
+                                                       :file-path "/var/tmp/holidays.edn"}]
+
+
+                       :status-for-day "2022-03-01"
+
+                       :ceiling-year "2022"
+
+                       :output [{:form :stdout
+                                 :field-selectors [[:period :juxt.home/juxtcode]
+                                                   [:balance]
+                                                   [:holidays]
+                                                   [:public-holidays]]}
+
+                                {:form :csv
+                                 :field-selectors [[:period :juxt.home/juxtcode]
+                                                   [:balance]
+                                                   [:holidays]
+                                                   [:public-holidays]]
+                                 :file-path "/var/tmp/testout.csv"}
+
+                                {:form :csv
+                                 :field-selectors [[:period :juxt.home/juxtcode]
+                                                   [:balance]]
+                                 :options {:separator \tab}
+                                 :file-path "/var/tmp/testout.tsv"}]}}
