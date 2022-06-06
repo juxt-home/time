@@ -44,6 +44,13 @@
                                              :juxt.home/status "TERMINATED"
                                              :juxt.home/employment-type "EMPLOYEE"})
 
+(def basic-employment-inactive-event {:juxt.home/employment-change-date #inst "2019-06-01T00:00"
+                                      :juxt.home/juxtcode "rpl"
+                                      :juxt.home/status "TERMINATED"
+                                      :juxt.home/employment-type "EMPLOYEE"})
+
+(def basic-employment-reactivated-event (assoc basic-user-employment-started-event :juxt.home/employment-change-date #inst "2019-10-01T00:00"))
+
 (def basic-full-time-user-history [basic-user-employment-started-event])
 
 
@@ -200,7 +207,16 @@
     (testing "By the end of the second year employment, balance should equal (+ entitlement carry)"
       (is (= 30 (int (:balance (sut/get-record-for-date (t/date "2020-12-31") test-calendar)))))
       (is (= 28 (int (:balance (sut/get-record-for-date (t/date "2020-12-31") test-calendar-with-15-holidays-taken)))))
-      (is (= 25 (int (:balance (sut/get-record-for-date (t/date "2020-12-31") test-calendar-with-18-holidays-taken))))))))
+      (is (= 25 (int (:balance (sut/get-record-for-date (t/date "2020-12-31") test-calendar-with-18-holidays-taken)))))))
+
+  (testing "When an employee is active, then goes inactive and then active again, entitlement resumes, but was paused"
+    (let [history (conj basic-full-time-user-history basic-employment-inactive-event basic-employment-reactivated-event)
+          record-collection (sut/history->staff-member-record-collection history)
+          calendar (sut/calendar {:staff-member-record-collection record-collection
+                                  :ceiling-year "2020"})]
+      (is (= 4 (int (:balance (sut/get-record-for-date (t/date "2019-06-01") calendar)))))
+      (is (= 4 (int (:balance (sut/get-record-for-date (t/date "2019-10-01") calendar)))))
+      (is (= 10 (int (:balance (sut/get-record-for-date (t/date "2019-12-31") calendar))))))))
 
 (comment
 
