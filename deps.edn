@@ -1,7 +1,9 @@
 {:paths ["src"]
  :deps {
         org.clojure/clojure {:mvn/version "1.11.1"}
-        tick/tick {:mvn/version "0.5.0-RC5"}
+                                        ;        tick/tick {:mvn/version "0.5.0-RC5"}
+        tick/tick {:git/url "https://github.com/cwchriswilliams/tick.git"
+                   :sha "feb3a1357181a9cab852d9f27715ea35866bd749"}
         org.clojure/data.csv {:mvn/version "1.0.1"}
         org.clojure/tools.cli {:mvn/version "1.0.206"}
         aero/aero {:mvn/version "1.1.6"}}
